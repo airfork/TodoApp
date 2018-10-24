@@ -1,30 +1,31 @@
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
-	"strings"
-	"time"
 
-	"github.com/airfork/goTraining/todo_api_mongoDB/models"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/gorilla/sessions"
+	mgo "gopkg.in/mgo.v2"
 )
+
+const p = "POST"
 
 // TodoController hold a mongoDB session for passing to functions
 type TodoController struct {
 	session *mgo.Session
+	store   *sessions.CookieStore
+	tpl     *template.Template
 }
 
 // NewController returns a pointer a struct that contains all the route functions
-func NewController(s *mgo.Session) *TodoController {
-	return &TodoController{s}
+func NewController(s *mgo.Session, store *sessions.CookieStore, tpl *template.Template) *TodoController {
+	return &TodoController{s, store, tpl}
 }
 
 // MainAPI handles requests to /api/todos
 func (tc TodoController) MainAPI(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	if r.Method == p {
 		tc.createTodo(w, r)
 	} else {
 		tc.getTodos(w, r)
@@ -36,112 +37,46 @@ func (tc TodoController) MainAPI(w http.ResponseWriter, r *http.Request) {
 func (tc TodoController) IDAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "DELETE" {
 		tc.deleteTodo(w, r)
-	}
-	if r.Method == "PUT" {
+	} else if r.Method == "PUT" {
 		tc.updateTodo(w, r)
 	} else {
 		tc.getTodo(w, r)
 	}
 }
 
-// Create handles a post request and creates a todo
-// to put into the db
-func (tc TodoController) createTodo(w http.ResponseWriter, r *http.Request) {
-	t := &models.Todo{
-		Name:    r.FormValue("name"),
-		ID:      bson.NewObjectId(),
-		Done:    false,
-		Created: time.Now().Format("2006-1-02 15:04:05"),
-	}
-
-	tc.session.DB("todo_api").C("todos").Insert(t)
-
-	tj, err := json.Marshal(t)
-	check(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201
-	w.Write(tj)
-}
-
-// GetTodos prints out all todos
-func (tc TodoController) getTodos(w http.ResponseWriter, r *http.Request) {
-	t := make([]models.Todo, 0)
-	i := tc.session.DB("todo_api").C("todos").Find(nil).Iter()
-	err := i.All(&t)
-	check(err)
-	tj, err := json.Marshal(t)
-	check(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(tj)
-}
-
-func (tc TodoController) deleteTodo(w http.ResponseWriter, r *http.Request) {
-	id := getID(r.URL.String())
-	if !bson.IsObjectIdHex(id) {
-		w.WriteHeader(404)
-		return
-	}
-
-	oid := bson.ObjectIdHex(id)
-
-	// Delete todo
-	if err := tc.session.DB("todo_api").C("todos").RemoveId(oid); err != nil {
-		w.WriteHeader(404)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK) // 200
-	fmt.Fprintln(w, "Deleted the todo with id", oid)
-}
-
-func (tc TodoController) updateTodo(w http.ResponseWriter, r *http.Request) {
-	t := &models.Todo{}
-	id := getID(r.URL.String())
-	if !bson.IsObjectIdHex(id) {
-		w.WriteHeader(404)
-		return
-	}
-	oid := bson.ObjectIdHex(id)
-	err := tc.session.DB("todo_api").C("todos").FindId(oid).One(&t)
-	check(err)
-	t.Done = !t.Done
-	err = tc.session.DB("todo_api").C("todos").Update(bson.M{"_id": oid}, t)
-	check(err)
-	tj, err := json.Marshal(t)
-	check(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(tj)
-}
-
-func (tc TodoController) getTodo(w http.ResponseWriter, r *http.Request) {
-	t := &models.Todo{}
-	id := getID(r.URL.String())
-	if !bson.IsObjectIdHex(id) {
-		w.WriteHeader(404)
-		return
-	}
-	oid := bson.ObjectIdHex(id)
-	err := tc.session.DB("todo_api").C("todos").FindId(oid).One(&t)
-	check(err)
-	tj, err := json.Marshal(t)
-	check(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(tj)
-}
-
-// Some basic error checking
-func check(err error) {
-	if err != nil {
-		fmt.Println(err)
+// Login handles the login logic, basic form right now
+func (tc TodoController) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		err := tc.tpl.ExecuteTemplate(w, "login.gohtml", nil)
+		if err != nil {
+			out := fmt.Sprintln("Something went wrong, please try again")
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(out))
+			return
+		}
+	} else if r.Method == p {
+		tc.loginLogic(w, r)
+	} else {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	}
 }
 
-// Takes URL and extracts the id
-func getID(u string) string {
-	i := strings.Split(u, "")
-	i = i[11:]
-	return strings.Join(i, "")
+// Register handles the logic for registering a new user
+func (tc TodoController) Register(w http.ResponseWriter, r *http.Request) {
+	if r.Method == p {
+		tc.registerLogic(w, r)
+	} else {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	}
+}
+
+// Index oads the index page template
+func (tc TodoController) Index(w http.ResponseWriter, r *http.Request) {
+	tc.LoginCheck(w, r)
+}
+
+// Logout deletes user session and redirects them to index
+func (tc TodoController) Logout(w http.ResponseWriter, r *http.Request) {
+	tc.logoutLogic(w, r)
 }

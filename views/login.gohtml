@@ -1,0 +1,44 @@
+<!-- Code for this was taken and modified from codepen
+    https://codepen.io/colorlib/pen/rxddKy
+ -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>ToDo</title>
+  <link rel="stylesheet" type="text/css" href="styles/login.css" />
+</head>
+<body>
+  <div class="login-page">
+    <div class="form">
+      <form class="register-form" action="/register" method="post">
+        <input type="text" placeholder="Username" name="username"/>
+        <input type="password" placeholder="Password" name="password"/>
+        <button>Signup</button>
+        <p class="message">Already registered? <a href="#">Sign In</a></p>
+      </form>
+      <form class="login-form" action="/login" method="post">
+        <input type="text" placeholder="Username" name="username"/>
+        <input type="password" placeholder="Password" name="password"/>
+        <button>Login</button>
+        <p class="message">Not registered? <a href="#">Create an account</a></p>
+        <p class="message">
+          Hello there
+        </p>
+      </form>
+    </div>
+  </div>
+</body>
+<script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+<script type="text/javascript">
+  $('.message a').click(() => {
+    $('form').animate({height: "toggle", opacity: "toggle"}, "slow");
+  });
+</script>
+</html>

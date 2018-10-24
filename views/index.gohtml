@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" type="text/css" href="styles/main.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>ToDo</title>
+  <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+</head>
+<body>
+  <nav>
+    {{ if .LoggedIn}} {{ else }}<li><a href="/login">Login</a></li> {{ end }}
+    {{ if .LoggedIn}} <li><a href="#"> {{.Username}} </a></li> {{ end }}
+    {{ if .LoggedIn}} <li><a href="/logout"> Logout </a></li> {{ end }}
+  </nav>
+  <header>
+    <h1>todo<span>list</span></h1>
+    <h2>A simple todo list app built with Go</h2>
+  </header>
+
+  <section class="form">
+    <input type="text" id="todoInput" placeholder="Insert your task here...">
+  </section>
+
+  <ul class="list">
+  </ul>
+
+  <script type="text/javascript" src="/views/main.js"></script>
+</body>
